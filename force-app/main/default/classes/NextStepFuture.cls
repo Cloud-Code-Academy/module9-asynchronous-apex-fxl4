@@ -27,9 +27,20 @@ public with sharing class NextStepFuture {
      * Opportunity Next Step field is a standard field
      * Update the corresponding test class AsynchronousTest and test method nextStepFuture_testUpdateAllNextStep to cover test this method
      */
-    //[public | private ] [static] data_type method_name (input parameters) {
-    //  The body of the method
-    //}
+
+    @future
+    public static void updateNextSteps () {
+        List<Account> nextStepAccounts = [SELECT Id, Name, Next_Step__c FROM Account WHERE Next_Step__c != 'Meeting in the future'];
+        for (Account a : nextStepAccounts) {
+            a.Next_Step__c = 'Meeting in the future';
+        }
+        update nextStepAccounts;
+        List<Opportunity> nextStepOpps = [SELECT Id, Name, NextStep FROM Opportunity WHERE NextStep != 'Meeting in the future'];
+        for (Opportunity opp : nextStepOpps) {
+            opp.NextStep = 'Meeting in the future';
+        }
+        update nextStepOpps;
+    }
 
     /*
     * Question 2
@@ -38,12 +49,13 @@ public with sharing class NextStepFuture {
     * Update the corresponding test class AsynchronousTest and test method nextStepFuture_testCreateDealAndUpdateRole to cover test this method
     */
     //Mix DML Error happens when you try to perform DML operations on setup and non-setup objects in a single transaction.
+
     public static void createDealAndUpdateRole() {
         Opportunity bigDeal = new Opportunity();
         insertBigDeal(bigDeal);
-
         UserRole[] roles = [SELECT Id, Name FROM UserRole WHERE Id = :UserInfo.getUserRoleId() OR Name = 'CRO' LIMIT 1];
-        updateUserRoleName(roles);
+        String roleIdString = roles[0].Id.toString();
+        updateUserRoleName(roleIdString);
     }
 
     // Helper method to insert big deal
@@ -52,25 +64,23 @@ public with sharing class NextStepFuture {
         opp.Name = 'Big Deal';
         opp.StageName = 'Closed Won'; 
         opp.CloseDate = Date.today();
-        
         insert opp;
     }
 
-
     // Helper method to update role name
-    private static void updateUserRoleName(UserRole[] roles){
+    @future // I added this
+    private static void updateUserRoleName(String roleIdString){
+        List<UserRole> roleList = [SELECT Id, Name FROM UserRole WHERE Id = :roleIdString OR Name = 'CRO' LIMIT 1];
         UserRole role;
-        if (roles.isEmpty()) {
+        if (roleList.isEmpty()) {
             role = new UserRole();
             role.portalType = 'None'; 
             role.CaseAccessForAccountOwner = 'Edit'; 
-            // role.OpportunityAccessForAccountOwner = 'Edit'; //This may need to be uncommented depending on your orgs Organization Wide Defaults(OWD) settings. If you are receiving FIELD_INTEGRITY_EXCEPTION, field integrity exception: unknown (Opportunity access level below organization default): [unknown], uncomment this line.
+            role.OpportunityAccessForAccountOwner = 'Edit'; //This may need to be uncommented depending on your orgs Organization Wide Defaults(OWD) settings. If you are receiving FIELD_INTEGRITY_EXCEPTION, field integrity exception: unknown (Opportunity access level below organization default): [unknown], uncomment this line.
         } else {
-            role = roles[0];
+            role = roleList[0];
         }
-
         role.Name = 'CRO';
-
         upsert role;
     }
 }
